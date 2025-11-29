@@ -13,6 +13,10 @@ export const registerUser = async (req: Request, res: Response) => {
   try {
     const { email, password, firstname, lastname } = req.body
 
+    if (!email || !password || !firstname || !lastname) {
+      return res.status(400).json({ message: "email, password, firstname and lastname are required" })
+    }
+
     // left email form model, right side data varible
     //   User.findOne({ email: email })
     const existingUser = await User.findOne({ email })
