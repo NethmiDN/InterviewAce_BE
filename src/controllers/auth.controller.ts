@@ -122,9 +122,12 @@ export const getMyProfile = async (req: AUthRequest, res: Response) => {
     })
   }
 
-  const { email, roles, _id } = user as IUSER
+  const { email, roles, _id, firstname, lastname } = user as IUSER
 
-  res.status(200).json({ message: "ok", data: { id: _id, email, roles } })
+  res.status(200).json({
+    message: "ok",
+    data: { id: _id, email, roles, firstname, lastname }
+  })
 }
 
 export const refreshToken = async (req: Request, res: Response) => {
