@@ -4,7 +4,8 @@ import {
   login,
   refreshToken,
   registerAdmin,
-  registerUser
+  registerUser,
+  updateMyProfile
 } from "../controllers/auth.controller"
 import { authenticate } from "../middleware/auth"
 import { requireRole } from "../middleware/role"
@@ -30,6 +31,9 @@ router.post(
 
 // me - Admin or User both
 router.get("/me", authenticate, getMyProfile)
+
+// update profile - authenticated user
+router.put("/me", authenticate, updateMyProfile)
 
 // router.get("/test", authenticate, () => {})
 

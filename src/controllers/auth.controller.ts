@@ -154,3 +154,47 @@ export const refreshToken = async (req: Request, res: Response) => {
     res.status(403).json({ message: "Invalid or expire token" })
   }
 }
+
+export const updateMyProfile = async (req: AUthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" })
+    }
+
+    const { firstname, lastname, email } = req.body as {
+      firstname?: string
+      lastname?: string
+      email?: string
+    }
+
+    if (!firstname && !lastname && !email) {
+      return res.status(400).json({ message: "At least one field (firstname, lastname, email) required" })
+    }
+
+    const user = await User.findById(req.user.sub)
+    if (!user) {
+      return res.status(404).json({ message: "User not found" })
+    }
+
+    if (email && email !== user.email) {
+      const existingEmail = await User.findOne({ email })
+      if (existingEmail) {
+        return res.status(400).json({ message: "Email already in use" })
+      }
+      user.email = email.toLowerCase()
+    }
+    if (firstname) user.firstname = firstname
+    if (lastname) user.lastname = lastname
+
+    await user.save()
+
+    const { _id, roles } = user
+    res.status(200).json({
+      message: "updated",
+      data: { id: _id, email: user.email, roles, firstname: user.firstname, lastname: user.lastname }
+    })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ message: "Internal server error" })
+  }
+}
