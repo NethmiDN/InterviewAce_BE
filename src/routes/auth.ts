@@ -5,11 +5,14 @@ import {
   refreshToken,
   registerAdmin,
   registerUser,
-  updateMyProfile
+  updateMyProfile,
+  uploadProfilePicture,
+  changeMyPassword
 } from "../controllers/auth.controller"
 import { authenticate } from "../middleware/auth"
 import { requireRole } from "../middleware/role"
 import { Role } from "../models/user.model"
+import multer from "multer"
 
 const router = Router()
 
@@ -34,6 +37,14 @@ router.get("/me", authenticate, getMyProfile)
 
 // update profile - authenticated user
 router.put("/me", authenticate, updateMyProfile)
+
+// change password - authenticated user
+router.put("/me/password", authenticate, changeMyPassword)
+
+const upload = multer({ storage: multer.memoryStorage() })
+
+// upload or change profile picture
+router.post("/me/avatar", authenticate, upload.single("avatar"), uploadProfilePicture)
 
 // router.get("/test", authenticate, () => {})
 

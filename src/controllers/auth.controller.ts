@@ -5,6 +5,7 @@ import { signAccessToken, signRefreshToken } from "../utils/tokens"
 import { AUthRequest } from "../middleware/auth"
 import jwt from "jsonwebtoken"
 import dotenv from "dotenv"
+import cloudinary from "../utils/cloudinary"
 dotenv.config()
 
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET as string
@@ -122,11 +123,11 @@ export const getMyProfile = async (req: AUthRequest, res: Response) => {
     })
   }
 
-  const { email, roles, _id, firstname, lastname } = user as IUSER
+  const { email, roles, _id, firstname, lastname, avatarUrl } = user as IUSER
 
   res.status(200).json({
     message: "ok",
-    data: { id: _id, email, roles, firstname, lastname }
+    data: { id: _id, email, roles, firstname, lastname, avatarUrl }
   })
 }
 
@@ -188,13 +189,108 @@ export const updateMyProfile = async (req: AUthRequest, res: Response) => {
 
     await user.save()
 
-    const { _id, roles } = user
+    const { _id, roles, avatarUrl } = user
     res.status(200).json({
       message: "updated",
-      data: { id: _id, email: user.email, roles, firstname: user.firstname, lastname: user.lastname }
+      data: { id: _id, email: user.email, roles, firstname: user.firstname, lastname: user.lastname, avatarUrl }
     })
   } catch (err) {
     console.error(err)
     res.status(500).json({ message: "Internal server error" })
+  }
+}
+
+export const changeMyPassword = async (req: AUthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" })
+    }
+
+    const { currentPassword, newPassword } = req.body as {
+      currentPassword?: string
+      newPassword?: string
+    }
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: "currentPassword and newPassword are required" })
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ message: "New password must be at least 8 characters" })
+    }
+
+    const user = await User.findById(req.user.sub)
+    if (!user) {
+      return res.status(404).json({ message: "User not found" })
+    }
+
+    const valid = await bcrypt.compare(currentPassword, user.password)
+    if (!valid) {
+      return res.status(400).json({ message: "Current password is incorrect" })
+    }
+
+    if (currentPassword === newPassword) {
+      return res.status(400).json({ message: "New password must be different from current password" })
+    }
+
+    const hash = await bcrypt.hash(newPassword, 10)
+    user.password = hash
+    await user.save()
+
+    return res.status(200).json({ message: "Password updated successfully" })
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ message: "Internal server error" })
+  }
+}
+
+export const uploadProfilePicture = async (req: AUthRequest, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" })
+
+    const file = (req as any).file as Express.Multer.File | undefined
+    if (!file) return res.status(400).json({ message: "No file uploaded" })
+
+    const user = await User.findById(req.user.sub)
+    if (!user) return res.status(404).json({ message: "User not found" })
+
+    // delete existing image on cloudinary if present
+    if (user.avatarPublicId) {
+      try {
+        await cloudinary.uploader.destroy(user.avatarPublicId)
+      } catch (err) {
+        console.warn("Failed to delete previous image", err)
+      }
+    }
+
+    // upload new image from buffer
+    const uploadFromBuffer = (buffer: Buffer) =>
+      new Promise<{ secure_url: string; public_id: string }>((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          { folder: "profile_pictures" },
+          (
+            error: import("cloudinary").UploadApiErrorResponse | undefined,
+            result: import("cloudinary").UploadApiResponse | undefined
+          ) => {
+          if (error) return reject(error)
+          if (!result) return reject(new Error("No result from Cloudinary"))
+          // @ts-ignore
+          resolve({ secure_url: result.secure_url, public_id: result.public_id })
+          }
+        )
+        stream.end(buffer)
+      })
+
+    const result = await uploadFromBuffer(file.buffer)
+
+    user.avatarUrl = result.secure_url
+    user.avatarPublicId = result.public_id
+    await user.save()
+
+    const { _id, email, roles, firstname, lastname, avatarUrl } = user
+    return res.status(200).json({ message: "uploaded", data: { id: _id, email, roles, firstname, lastname, avatarUrl } })
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ message: "Failed to upload image" })
   }
 }
