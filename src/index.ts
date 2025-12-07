@@ -5,9 +5,6 @@ import mongoose from "mongoose"
 import authRouter from "./routes/auth"
 import postRouter from "./routes/post"
 import aiRouter from "./routes/ai"
-import { authenticate } from "./middleware/auth"
-import { requireRole } from "./middleware/role"
-import { Role } from "./models/user.model"
 dotenv.config()
 
 const PORT = process.env.PORT
@@ -28,25 +25,9 @@ app.use("/api/v1/auth", authRouter)
 app.use("/api/v1/post", postRouter)
 app.use("/api/v1/ai", aiRouter)
 
-// sample route with auth
-
+// welcome route
 app.get("/", (_req, res) => {
-  res.send("Welcome to Smart Blog API")
-})
-
-// public
-app.get("/test-1", (_req, res) => {
-  res.status(204).send()
-})
-
-// protected
-app.get("/test-2", authenticate, (_req, res) => {
-  res.status(204).send()
-})
-
-// admin only
-app.get("/test-3", authenticate, requireRole([Role.ADMIN]), (_req, res) => {
-  res.status(204).send()
+  res.send("Welcome to InterviewAce API")
 })
 
 mongoose

@@ -52,7 +52,7 @@ export const login = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body
 
-    const existingUser = (await User.findOne({ email })) as IUSER | null
+    const existingUser = await User.findOne({ email })
     if (!existingUser) {
       return res.status(401).json({ message: "Invalid credentials" })
     }
@@ -123,7 +123,7 @@ export const getMyProfile = async (req: AUthRequest, res: Response) => {
     })
   }
 
-  const { email, roles, _id, firstname, lastname, avatarUrl } = user as IUSER
+  const { email, roles, _id, firstname, lastname, avatarUrl } = user
 
   res.status(200).json({
     message: "ok",
