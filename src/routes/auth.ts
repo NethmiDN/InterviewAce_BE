@@ -3,15 +3,12 @@ import {
   getMyProfile,
   login,
   refreshToken,
-  registerAdmin,
   registerUser,
   updateMyProfile,
   uploadProfilePicture,
   changeMyPassword
 } from "../controllers/auth.controller"
 import { authenticate } from "../middleware/auth"
-import { requireRole } from "../middleware/role"
-import { Role } from "../models/user.model"
 import multer from "multer"
 
 const router = Router()
@@ -24,15 +21,7 @@ router.post("/login", login)
 
 router.post("/refresh", refreshToken)
 
-// register (ADMIN) - Admin only
-router.post(
-  "/admin/register",
-  authenticate,
-  requireRole([Role.ADMIN]),
-  registerAdmin
-)
-
-// me - Admin or User both
+// me - authenticated user
 router.get("/me", authenticate, getMyProfile)
 
 // update profile - authenticated user

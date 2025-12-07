@@ -82,34 +82,7 @@ export const login = async (req: Request, res: Response) => {
   }
 }
 
-export const registerAdmin = async (req: Request, res: Response) => {
-  try {
-    const { email, password } = req.body
 
-    const existingUser = await User.findOne({ email })
-    if (existingUser) {
-      return res.status(400).json({ message: "Email exists" })
-    }
-
-    const hash = await bcrypt.hash(password, 10)
-
-    const user = await User.create({
-      email,
-      password: hash,
-      roles: [Role.ADMIN]
-    })
-
-    res.status(201).json({
-      message: "Admin registed",
-      data: { email: user.email, roles: user.roles }
-    })
-  } catch (err) {
-    console.error(err)
-    res.status(500).json({
-      message: "Internal server error"
-    })
-  }
-}
 
 export const getMyProfile = async (req: AUthRequest, res: Response) => {
   if (!req.user) {

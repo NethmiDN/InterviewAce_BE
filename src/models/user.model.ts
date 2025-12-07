@@ -1,8 +1,6 @@
 import mongoose, { Document, Schema } from "mongoose"
 
 export enum Role {
-  ADMIN = "ADMIN",
-  AUTHOR = "AUTHOR",
   USER = "USER"
 }
 
