@@ -7,7 +7,8 @@ import postRouter from "./routes/post"
 import aiRouter from "./routes/ai"
 dotenv.config()
 
-const PORT = process.env.PORT
+const BASE_PORT = Number(process.env.PORT) || 5000
+const MAX_PORT_SHIFT = 10
 const MONGO_URI = process.env.MONGO_URI as string
 
 const app = express()
@@ -40,9 +41,25 @@ mongoose
     process.exit(1)
   })
 
-app.listen(PORT, () => {
-  console.log("Server is running")
-})
+const startServer = (port: number, attemptsLeft: number) => {
+  const server = app.listen(port, () => {
+    console.log(`Server is running on port ${port}`)
+  })
+
+  server.on("error", (err: NodeJS.ErrnoException) => {
+    if (err.code === "EADDRINUSE" && attemptsLeft > 0) {
+      const nextPort = port + 1
+      console.warn(`Port ${port} is busy; retrying on ${nextPort}`)
+      server.close(() => startServer(nextPort, attemptsLeft - 1))
+      return
+    }
+
+    console.error(`Failed to bind port ${port}`, err)
+    process.exit(1)
+  })
+}
+
+startServer(BASE_PORT, MAX_PORT_SHIFT)
 
 // --------------------------------------
 // // Built in middlewares (Global)
