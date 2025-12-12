@@ -21,6 +21,8 @@ export interface IUSER extends Document {
   approved: Status
   avatarUrl?: string
   avatarPublicId?: string
+  resetPasswordToken?: string
+  resetPasswordExpires?: Date
 }
 
 const userSchema = new Schema<IUSER>({
@@ -36,7 +38,9 @@ const userSchema = new Schema<IUSER>({
   }
   ,
   avatarUrl: { type: String },
-  avatarPublicId: { type: String }
+  avatarPublicId: { type: String },
+  resetPasswordToken: { type: String },
+  resetPasswordExpires: { type: Date }
 })
 
 export const User = mongoose.model<IUSER>("User", userSchema)

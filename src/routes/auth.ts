@@ -6,7 +6,8 @@ import {
   registerUser,
   updateMyProfile,
   uploadProfilePicture,
-  changeMyPassword
+  changeMyPassword,
+  requestPasswordReset
 } from "../controllers/auth.controller"
 import { authenticate } from "../middleware/auth"
 import multer from "multer"
@@ -18,6 +19,9 @@ router.post("/register", registerUser)
 
 // login - public
 router.post("/login", login)
+
+// forgot password - public
+router.post("/forgot-password", requestPasswordReset)
 
 router.post("/refresh", refreshToken)
 

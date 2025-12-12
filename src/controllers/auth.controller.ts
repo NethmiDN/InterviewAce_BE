@@ -6,6 +6,8 @@ import { AUthRequest } from "../middleware/auth"
 import jwt from "jsonwebtoken"
 import dotenv from "dotenv"
 import cloudinary from "../utils/cloudinary"
+import crypto from "crypto"
+import { sendPasswordResetOtpEmail } from "../utils/mailer"
 dotenv.config()
 
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET as string
@@ -82,6 +84,38 @@ export const login = async (req: Request, res: Response) => {
   }
 }
 
+
+
+export const requestPasswordReset = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body as { email?: string }
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" })
+    }
+
+    const normalizedEmail = email.trim().toLowerCase()
+    const user = await User.findOne({ email: normalizedEmail })
+
+    if (user) {
+      const otp = Math.floor(100000 + Math.random() * 900000).toString()
+      const hashedToken = crypto.createHash("sha256").update(otp).digest("hex")
+
+      user.resetPasswordToken = hashedToken
+      user.resetPasswordExpires = new Date(Date.now() + 1000 * 60 * 15) // 15 minutes
+      await user.save({ validateBeforeSave: false })
+
+      await sendPasswordResetOtpEmail(user.email, otp)
+    }
+
+    return res.status(200).json({
+      message: "If an account exists for that email, we sent password reset instructions."
+    })
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ message: "Failed to process password reset request" })
+  }
+}
 
 
 export const getMyProfile = async (req: AUthRequest, res: Response) => {
