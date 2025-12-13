@@ -8,6 +8,7 @@ import dotenv from "dotenv"
 import cloudinary from "../utils/cloudinary"
 import crypto from "crypto"
 import { sendPasswordResetOtpEmail } from "../utils/mailer"
+import { validatePasswordStrength } from "../utils/validators"
 dotenv.config()
 
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET as string
@@ -19,6 +20,9 @@ export const registerUser = async (req: Request, res: Response) => {
     if (!email || !password || !firstname || !lastname) {
       return res.status(400).json({ message: "email, password, firstname and lastname are required" })
     }
+
+    const passwordError = validatePasswordStrength(password)
+    if (passwordError) return res.status(400).json({ message: passwordError })
 
     // left email form model, right side data varible
     //   User.findOne({ email: email })
@@ -222,9 +226,8 @@ export const changeMyPassword = async (req: AUthRequest, res: Response) => {
       return res.status(400).json({ message: "currentPassword and newPassword are required" })
     }
 
-    if (newPassword.length < 8) {
-      return res.status(400).json({ message: "New password must be at least 8 characters" })
-    }
+    const passwordError = validatePasswordStrength(newPassword)
+    if (passwordError) return res.status(400).json({ message: passwordError })
 
     const user = await User.findById(req.user.sub)
     if (!user) {
@@ -279,10 +282,10 @@ export const uploadProfilePicture = async (req: AUthRequest, res: Response) => {
             error: import("cloudinary").UploadApiErrorResponse | undefined,
             result: import("cloudinary").UploadApiResponse | undefined
           ) => {
-          if (error) return reject(error)
-          if (!result) return reject(new Error("No result from Cloudinary"))
-          // @ts-ignore
-          resolve({ secure_url: result.secure_url, public_id: result.public_id })
+            if (error) return reject(error)
+            if (!result) return reject(new Error("No result from Cloudinary"))
+            // @ts-ignore
+            resolve({ secure_url: result.secure_url, public_id: result.public_id })
           }
         )
         stream.end(buffer)
@@ -299,5 +302,54 @@ export const uploadProfilePicture = async (req: AUthRequest, res: Response) => {
   } catch (err) {
     console.error(err)
     return res.status(500).json({ message: "Failed to upload image" })
+  }
+}
+
+export const resetPasswordWithOtp = async (req: Request, res: Response) => {
+  try {
+    const { email, otp, newPassword } = req.body as {
+      email?: string
+      otp?: string
+      newPassword?: string
+    }
+
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ message: "Email, OTP and newPassword are required" })
+    }
+
+    const passwordError = validatePasswordStrength(newPassword)
+    if (passwordError) return res.status(400).json({ message: passwordError })
+
+    const user = await User.findOne({
+      email: email.trim().toLowerCase(),
+      resetPasswordToken: { $exists: true }
+    })
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid request or user not found" })
+    }
+
+    const hashedToken = crypto.createHash("sha256").update(otp).digest("hex")
+
+    if (user.resetPasswordToken !== hashedToken) {
+      return res.status(400).json({ message: "Invalid OTP" })
+    }
+
+    if (!user.resetPasswordExpires || user.resetPasswordExpires < new Date()) {
+      return res.status(400).json({ message: "OTP has expired" })
+    }
+
+    const hash = await bcrypt.hash(newPassword, 10)
+    user.password = hash
+
+    user.resetPasswordToken = undefined
+    user.resetPasswordExpires = undefined
+
+    await user.save()
+
+    return res.status(200).json({ message: "Password reset successfully" })
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ message: "Internal server error" })
   }
 }
