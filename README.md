@@ -1,78 +1,86 @@
-# InterviewAce API
+# InterviewAce - Backend
 
-A TypeScript Express backend that powers InterviewAce, a mock-interview companion. It provides secure user authentication, profile management with avatar uploads, and AI-assisted interview question generation backed by Google Gemini.
+**Deployed URL:** [https://interview-ace-be.vercel.app](https://interview-ace-be.vercel.app/)
 
-## Tech Stack
-- Node.js 20+ with Express and TypeScript
-- MongoDB with Mongoose ODM
-- JWT authentication with access and refresh tokens
-- Multer + Cloudinary for avatar uploads
-- Google Gemini API (via Axios) for AI-generated interview questions
-- Vite tooling is included for the companion frontend (`npm run frontend`).
+## Project Description
+This is the **RESTful API** backend for InterviewAce, a Full Stack Web Application built with the **MERN stack** and **TypeScript**. It provides secure authentication, profile management, and AI-powered interview question generation.
 
-## Features
-- User registration, login, refresh tokens, and password changes
-- Authenticated profile read/update endpoints with optional avatar uploads
-- Role-aware middleware (`authenticate`, `requireRole`) for future admin features
-- AI endpoint that generates interview questions with automatic fallback prompts if the AI service throttles or is unavailable
-- Structured routing (`/api/v1/auth`, `/api/v1/ai`, `/api/v1/post`) ready for further expansion
+The backend is designed to be scalable and secure, following best practices such as JWT authentication, password hashing, and role-based access control (RBAC).
 
-### Environment Variables
-| Name | Description |
-| --- | --- |
-| `PORT` | Optional. Port for the API (defaults to 5000). |
-| `MONGO_URI` | MongoDB connection string. |
-| `JWT_SECRET` | Secret for 30-minute access tokens. |
-| `JWT_REFRESH_SECRET` | Secret for 7-day refresh tokens. |
-| `GEMINI_API_KEY` | Google Gemini key for AI question generation. |
-| `CLOUDINARY_CLOUD_NAME` | Cloudinary account name for avatars. |
-| `CLOUDINARY_API_KEY` | Cloudinary API key. |
-| `CLOUDINARY_API_SECRET` | Cloudinary API secret. |
+## Technologies and Tools Used
+-   **Runtime:** Node.js, Express.js
+-   **Language:** TypeScript
+-   **Database:** MongoDB Atlas (Mongoose ODM)
+-   **Authentication:** JSON Web Tokens (JWT), bcryptjs
+-   **AI Integration:** Google Gemini API (Content Generation)
+-   **Storage:** Cloudinary (Avatar Uploads)
+-   **Deployment:** Vercel
 
-> The AI route gracefully falls back to a curated list of common interview questions when the Gemini API is unavailable or throttled; cooldowns are respected via the `retry-after` header when present.
+## Main Features
+1.  **Secure Authentication**:
+    -   User registration and login.
+    -   JWT-based access and refresh token rotation.
+    -   Password encryption using `bcryptjs`.
+2.  **Advanced Feature: AI API Integration**:
+    -   Integration with **Google Gemini** to generate context-aware interview questions based on user roles (e.g., "Senior React Developer").
+    -   Graceful fallback mechanism if the AI service is unavailable.
+3.  **Profile Management**:
+    -   Endpoints for viewing and updating user profiles.
+    -   Avatar image upload support via Cloudinary and Multer.
+4.  **Security**:
+    -   Protected routes using middleware (`authenticate`, `requireRole`).
+    -   Secure environment variable management.
 
-## API Overview
+## Setup and Run Instructions
 
-| Method | Route | Auth | Description |
-| --- | --- | --- | --- |
-| `GET` | `/` | Public | Health/welcome message. |
-| `POST` | `/api/v1/auth/register` | Public | Create a USER account (firstname, lastname, email, password). |
-| `POST` | `/api/v1/auth/login` | Public | Login and receive access + refresh tokens. |
-| `POST` | `/api/v1/auth/refresh` | Public | Exchange refresh token for a new access token. |
-| `GET` | `/api/v1/auth/me` | Bearer | Fetch authenticated profile (password omitted). |
-| `PUT` | `/api/v1/auth/me` | Bearer | Update firstname, lastname, or email (uniqueness enforced). |
-| `PUT` | `/api/v1/auth/me/password` | Bearer | Change password (requires current password, validates length). |
-| `POST` | `/api/v1/auth/me/avatar` | Bearer + multipart | Upload/replace avatar; previous Cloudinary image is removed if it exists. |
-| `POST` | `/api/v1/ai/generate` | Public | Generate up to 20 interview questions using Gemini, with fallback list. |
-| `GET` | `/api/v1/post` | Public | Placeholder route for future post resources. |
+### 1. Prerequisites
+-   Node.js (v18+)
+-   MongoDB Atlas Account
+-   Google Gemini API Key
+-   Cloudinary Account
 
-All authenticated routes require an `Authorization: Bearer <accessToken>` header. Access tokens expire after 30 minutes; use the refresh token flow to fetch a new one without re-login.
+### 2. Installation
+```powershell
+# Clone the repository
+git clone <repository_url>
 
-## Project Structure
-```
-src/
-  index.ts               # Express bootstrap, Mongo connection, CORS config
-  controllers/
-    auth.controller.ts   # Auth, profile, password, avatar logic
-    ai.controller.ts     # Gemini integration with fallback handling
-  middleware/
-    auth.ts              # JWT authentication middleware
-    role.ts              # Role guard for future admin features
-  models/
-    user.model.ts        # User schema with status enum and avatar metadata
-  routes/                # Versioned API routers
-  utils/
-    tokens.ts            # Access/refresh token helpers
-    cloudinary.ts        # Cloudinary client configuration
+# Navigate to the backend directory
+cd interviewace_be
+
+# Install dependencies
+npm install
 ```
 
-## Scripts
-- `npm run dev` – Start the API with `ts-node` (auto restarts via your editor/terminal of choice).
-- `npm run build` – Type-check and emit JavaScript to `dist/`.
-- `npm run frontend` – Optional Vite dev server if you work on the companion frontend from this repo.
-- `npm run lint` – ESLint via the flat config.
+### 3. Environment Headers
+Create a `.env` file in the root directory and populate it with the following secrets:
+```env
+PORT=5000
+MONGO_URI=mongodb+srv://<user>:<pass>@cluster.mongodb.net/interviewace
+JWT_SECRET=your_super_secret_key
+JWT_REFRESH_SECRET=your_super_refresh_secret
+GEMINI_API_KEY=your_google_gemini_key
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_key
+CLOUDINARY_API_SECRET=your_secret
+```
 
-## Next Steps
-- Flesh out `src/routes/post.ts` with interview post resources.
-- Add admin roles via `requireRole` middleware for approval workflows.
-- Add an `.env.example` committed template so newcomers can bootstrap faster.
+### 4. Run Locally
+```powershell
+# Run in development mode (with ts-node)
+npm run dev
+
+# OR build and start
+npm run build
+npm start
+```
+The server will start on `http://localhost:5000` (or your specfied PORT).
+
+### 5. API Documentation
+Key endpoints include:
+-   `POST /api/v1/auth/register` - Create account
+-   `POST /api/v1/auth/login` - Login
+-   `POST /api/v1/ai/generate` - Generate AI questions (Advanced Feature)
+-   `GET /api/v1/auth/me` - Get current user profile
+
+---
+*Submitted as part of the Full Stack Web Application Development Coursework.*
