@@ -17,7 +17,7 @@ const MONGO_URI = process.env.MONGO_URI as string;
 app.use(express.json());
 app.use(
   cors({
-    origin: ["http://localhost:5173", "https://interviewacefe.vercel.app"],
+    origin: ["http://localhost:5173", "https://interview-ace-fe.vercel.app"],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     credentials: true
   })
