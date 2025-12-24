@@ -30,7 +30,7 @@ router.post("/reset-password", resetPasswordWithOtp)
 router.post("/refresh", refreshToken)
 
 // me - authenticated user
-router.get("/me", authenticate, getMyProfile)
+router.get("/profile", authenticate, getMyProfile)
 
 // update profile - authenticated user
 router.put("/me", authenticate, updateMyProfile)

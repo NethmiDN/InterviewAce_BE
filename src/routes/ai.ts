@@ -7,6 +7,6 @@ router.get("/", (_req, res) => {
   res.json({ message: "AI endpoint" })
 })
 
-router.post("/generate", generateAiQuestions)
+router.post("/create", generateAiQuestions)
 
 export default router

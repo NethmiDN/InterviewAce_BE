@@ -6,30 +6,6 @@ dotenv.config()
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY as string
 
-const FALLBACK_QUESTIONS: string[] = [
-  "Tell me about yourself.",
-  "Why are you interested in this role?",
-  "Describe a challenging project you worked on.",
-  "How do you stay up to date with industry trends?",
-  "Tell me about a time you worked in a team.",
-  "Describe a situation where you solved a difficult problem.",
-  "What are your strengths and weaknesses?",
-  "Tell me about a time you made a mistake and how you handled it.",
-  "Where do you see yourself in five years?",
-  "Why should we hire you for this position?"
-]
-
-const respondWithFallback = (res: Response) => res.status(200).json({ questions: FALLBACK_QUESTIONS })
-
-let geminiRetryUntil = 0
-
-const shouldSkipGeminiCall = () => Date.now() < geminiRetryUntil
-
-const setGeminiCooldown = (retrySeconds?: number) => {
-  const fallbackSeconds = retrySeconds && retrySeconds > 0 ? retrySeconds : 60
-  geminiRetryUntil = Date.now() + fallbackSeconds * 1000
-}
-
 type GenerateBody = {
   role?: string
   experience?: string
@@ -45,11 +21,6 @@ export const generateAiQuestions = async (req: Request, res: Response) => {
     if (!GEMINI_API_KEY) {
       console.error("Missing GEMINI_API_KEY")
       return res.status(500).json({ message: "AI key not configured" })
-    }
-
-    if (shouldSkipGeminiCall()) {
-      console.warn("Skipping Gemini call due to active cooldown; serving fallback questions")
-      return respondWithFallback(res)
     }
 
     const profileParts: string[] = []
@@ -70,7 +41,7 @@ export const generateAiQuestions = async (req: Request, res: Response) => {
     let aiResponse
     try {
       aiResponse = await axios.post<GeminiApiResponse>(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_API_KEY}`,
         {
           contents: [
             {
@@ -78,39 +49,50 @@ export const generateAiQuestions = async (req: Request, res: Response) => {
             }
           ],
           generationConfig: {
-            maxOutputTokens: 512
-          }
+            maxOutputTokens: 1024
+          },
+          safetySettings: [
+            {
+              category: "HARM_CATEGORY_HARASSMENT",
+              threshold: "BLOCK_NONE"
+            },
+            {
+              category: "HARM_CATEGORY_HATE_SPEECH",
+              threshold: "BLOCK_NONE"
+            },
+            {
+              category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+              threshold: "BLOCK_NONE"
+            },
+            {
+              category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+              threshold: "BLOCK_NONE"
+            }
+          ]
         },
         {
           headers: {
-            "Content-Type": "application/json",
-            "x-goog-api-key": GEMINI_API_KEY
+            "Content-Type": "application/json"
           },
-          timeout: 30000
+          timeout: 40000
         }
       )
+
     } catch (apiErr: any) {
-      console.error("Gemini API error, serving fallback questions:", {
+      console.error("Gemini API error:", {
         message: apiErr.message,
         status: apiErr.response?.status,
         data: apiErr.response?.data
       })
-      const retryAfterHeader = Number(apiErr.response?.headers?.["retry-after"])
-      if (apiErr.response?.status === 429 || apiErr.response?.data?.error?.status === "RESOURCE_EXHAUSTED") {
-        let retrySeconds = !Number.isNaN(retryAfterHeader) ? retryAfterHeader : undefined
-        if (!retrySeconds) {
-          const retryMatch = apiErr.response?.data?.error?.message?.match(/retry in (\d+(?:\.\d+)?)s/i)
-          retrySeconds = retryMatch ? Number(retryMatch[1]) : undefined
-        }
-        setGeminiCooldown(retrySeconds)
-      }
-      return respondWithFallback(res)
+
+      const errorMessage = apiErr.response?.data?.error?.message || apiErr.message || "Gemini API request failed";
+      return res.status(apiErr.response?.status || 500).json({ message: errorMessage });
     }
 
     const candidate = aiResponse.data?.candidates?.[0]
     if (!candidate) {
-      console.error("No candidates returned from Gemini, serving fallback:", aiResponse.data)
-      return respondWithFallback(res)
+      console.error("No candidates returned from Gemini:", aiResponse.data)
+      return res.status(502).json({ message: "AI did not return any candidates." })
     }
 
     const content = candidate.content
@@ -128,8 +110,9 @@ export const generateAiQuestions = async (req: Request, res: Response) => {
     }
 
     if (!rawText) {
-      console.error("Empty text returned from Gemini, serving fallback:", candidate)
-      return respondWithFallback(res)
+      console.error("Empty text returned from Gemini. Candidate:", JSON.stringify(candidate, null, 2))
+      const reason = (candidate as any)?.finishReason || "UNKNOWN";
+      return res.status(502).json({ message: `AI returned empty text. Finish Reason: ${reason}` })
     }
 
     const questions = rawText
@@ -139,8 +122,8 @@ export const generateAiQuestions = async (req: Request, res: Response) => {
       .map((line: string) => line.replace(/^\d+[\).\s-]*/, ""))
 
     if (!questions.length) {
-      console.error("Parsed no questions from text, serving fallback:", rawText)
-      return respondWithFallback(res)
+      console.error("Parsed no questions from text:", rawText)
+      return res.status(502).json({ message: "Failed to parse questions from AI response." })
     }
 
     return res.status(200).json({ questions })
