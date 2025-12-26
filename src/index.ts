@@ -39,15 +39,13 @@ mongoose
   .then(() => {
     console.log("✅ DB connected successfully");
 
-    // DB සම්බන්ධ වූ පසු පමණක් Server එක listen කිරීම ආරම්භ කරයි
     app.listen(PORT, () => {
       console.log(`🚀 Server is running on port ${PORT}`);
     });
   })
   .catch((err) => {
     console.error("❌ DB connection error:", err);
-    process.exit(1); // Connection එක අසාර්ථක නම් process එක නතර කරයි
+    process.exit(1); 
   });
 
-// Vercel සඳහා app එක export කිරීම අවශ්‍ය විය හැක
 export default app;
