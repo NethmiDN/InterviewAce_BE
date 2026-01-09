@@ -3,7 +3,6 @@ import cors from "cors";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import authRouter from "./routes/auth";
-import postRouter from "./routes/post";
 import aiRouter from "./routes/ai";
 
 dotenv.config();
@@ -25,7 +24,6 @@ app.use(
 
 // Routes
 app.use("/api/v1/auth", authRouter);
-app.use("/api/v1/post", postRouter);
 app.use("/api/v1/interview", aiRouter);
 
 // Welcome route
